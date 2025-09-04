@@ -1,0 +1,6 @@
+.env
+*.pyc
+/documentation
+/images
+/output
+/tokens

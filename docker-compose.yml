@@ -1,0 +1,18 @@
+services:
+  idealista_app:
+    image: idealista_app
+    build:
+      context: ./src
+      dockerfile: Dockerfile
+    volumes:
+      - output:/output
+      - tokens:/tokens
+    env_file:
+      - .env
+    environment:
+      - CONFIG_PATH=config.yaml
+    network_mode: bridge
+
+volumes:
+  output:
+  tokens:
