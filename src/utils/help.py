@@ -32,7 +32,7 @@ def get_new_records(df: pd.DataFrame, df_new: pd.DataFrame) -> pd.DataFrame:
     # Filtrar sólo los registros nuevos que no existen en df
     new_records = df_new[~df_new["_key"].isin(df["_key"])].copy()
 
-    # Convertir 'Price' a numérico, rellenar NaNs con 0 y convertir a entero
+    # Convertir 'Precio' a numérico, rellenar NaNs con 0 y convertir a entero
     new_records["Precio"] = pd.to_numeric(new_records["Precio"], errors="coerce").fillna(0).astype(int)
 
     # Eliminar la columna clave temporal en ambos DataFrames
@@ -61,6 +61,7 @@ def save_df_to_json_append(df: pd.DataFrame, filename: str):
     # Crear una copia del DataFrame y añadir una columna 'datetime' con la fecha y hora actual
     df = df.copy()
     df['datetime'] = datetime.now().isoformat()
+    df['Precio'] = pd.to_numeric(df["Precio"], errors="coerce").fillna(0).astype(int)
 
     # Inicializar la lista de datos leyendo del archivo si existe
     if filename.exists():
@@ -82,12 +83,37 @@ def save_df_to_json_append(df: pd.DataFrame, filename: str):
     else:
         new_records = df.to_dict(orient='records')
 
-    # Añadir los nuevos registros a los datos existentes
-    data.extend(new_records)
+    # Construir/actualizar un diccionario indexado por Código de propiedad ===
+    store = {rec["Código de propiedad"]: rec for rec in data}
 
-    # Escribir los datos actualizados en el archivo
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+    if new_records:
+        for rec in new_records:
+            codigo = rec["Código de propiedad"]
+            fecha = rec["datetime"]
+            precio = rec["Precio"]
+
+            if codigo not in store:
+                # Si es un Registro nuevo se inicialia histórico
+                rec["Histórico de precios"] = {fecha: precio}
+                store[codigo] = rec
+            else:
+                # Actualizar histórico
+                if "Histórico de precios" not in store[codigo]:
+                    store[codigo]["Histórico de precios"] = {}
+                store[codigo]["Histórico de precios"][fecha] = precio
+
+                # Si es más reciente,se actulizan todos los campos
+                if pd.to_datetime(fecha) > pd.to_datetime(store[codigo]["datetime"]):
+                    store[codigo].update(rec)
+    else:
+        for rec in data:
+            store[codigo].update(rec)
+
+    # Actualizar el archivo JSON con los nuevos registros
+    if store:
+        # Escribir los datos actualizados en el archivo
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(list(store.values()), f, ensure_ascii=False, indent=4)
 
     # Mostrar el número de nuevos registros añadidos
     logger.info(f"{len(new_records)} registros añadidos al archivo {filename}.")
