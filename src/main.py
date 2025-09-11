@@ -19,19 +19,29 @@ idealista_conn = IdealistaConnection()
 
 # Extrae y almacena los datos
 all_new_records = []
+page = 1
 for shape_type in ['Mid Home']: #['Small Home', 'Mid Home', 'Big Home']
     for location in ["La Latina", "Alcorcón", "Leganés", "Carabanchel"]:
-        logger.info(f"Procesando {shape_type} en {location}...")
-        # Obtiene los parámetros
-        params = get_params(shape_type, location)
-        # Realiza la solicitud
-        status, response = idealista_conn.api_post(params)
-        # Parsea la respuesta
-        df = parse_response(status, response)
+        df_records = pd.DataFrame()
+        while True:
+            logger.info(f"Procesando {shape_type} en {location}: página {page}")
+            # Obtiene los parámetros
+            params = get_params(shape_type, location, page)
+            # Realiza la solicitud
+            status, response = idealista_conn.api_post(params)
+            # Parsea la respuesta
+            df, paginable = parse_response(status, response)
+            # Almacena los datos en un DataFrame
+            df_records = pd.concat([df_records, df], ignore_index=True)
+            # Extrae todas las páginas
+            if df.shape[0] < int(params["maxItems"]) or not paginable:
+                break
+            page += 1
+
         # Aplica filtros adicionales al DataFrame
-        df = filter_output(df)
+        df_records = filter_output(df_records)
         # Guarda el DataFrame en un archivo JSON
-        new_records = save_df_to_json_append(df, config['PATH_RESULTS'])
+        new_records = save_df_to_json_append(df_records, config['PATH_RESULTS'])
         all_new_records.extend(new_records)
         time.sleep(1)
 

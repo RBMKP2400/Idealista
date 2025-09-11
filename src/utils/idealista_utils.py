@@ -61,7 +61,9 @@ def parse_response(status: int, response: dict) -> pd.DataFrame:
     # Nueva columna
     df["Rango Superficie"] = np.where(df["Superficie (m²)"] < 90, "<90 m²", ">90 m²")
 
-    return df
+    paginable = response.get("paginable", False)
+
+    return df, paginable
 
 def filter_output(df: pd.DataFrame) -> pd.DataFrame:
     """
