@@ -34,9 +34,10 @@ for shape_type in ['Mid Home']: #['Small Home', 'Mid Home', 'Big Home']
             # Almacena los datos en un DataFrame
             df_records = pd.concat([df_records, df], ignore_index=True)
             # Extrae todas las páginas
-            if df.shape[0] < int(params["maxItems"]) or not paginable:
+            if df.shape[0] == int(params["maxItems"]) and paginable:
+                page += 1
+            else:
                 break
-            page += 1
 
         # Aplica filtros adicionales al DataFrame
         df_records = filter_output(df_records)

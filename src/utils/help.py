@@ -107,6 +107,7 @@ def save_df_to_json_append(df: pd.DataFrame, filename: str):
                     store[codigo].update(rec)
     else:
         for rec in data:
+            codigo = rec["Código de propiedad"]
             store[codigo].update(rec)
 
     # Actualizar el archivo JSON con los nuevos registros

@@ -48,11 +48,12 @@ def parse_response(status: int, response: dict) -> pd.DataFrame:
 
     # Parsea la respuesta
     df = pd.DataFrame(response.get("elementList", []))
+    paginable = response.get("paginable", False)
 
     # Solo procesa si hay datos
     if df.empty:
         logger.warning("Aviso: No hay datos en la respuesta.")
-        return df
+        return df, paginable
 
     # Selecciona columnas y renombra
     columnas = [col for col in atributes.keys() if col in df.columns]
@@ -60,9 +61,7 @@ def parse_response(status: int, response: dict) -> pd.DataFrame:
 
     # Nueva columna
     df["Rango Superficie"] = np.where(df["Superficie (m²)"] < 90, "<90 m²", ">90 m²")
-
-    paginable = response.get("paginable", False)
-
+    
     return df, paginable
 
 def filter_output(df: pd.DataFrame) -> pd.DataFrame:
