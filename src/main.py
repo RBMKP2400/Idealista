@@ -51,8 +51,8 @@ for shape_type in ['Mid Home']: #['Small Home', 'Mid Home', 'Big Home']
 df_metrics = table_metics(config)
 df_new_records = pd.DataFrame(all_new_records)
 
-# Crear columnas Score y Reformado
-scorer = RealEstateScored(df_new_records, model_dir="models/best_model")
+# Crear columnas Score y Reformado (esta columna se crea si USE_MODEL es True)
+scorer = RealEstateScored(df=df_new_records, trigger=config["USE_MODEL"])
 df_new_records = scorer.df.copy()
 
 # GMAIL: Enviar correo

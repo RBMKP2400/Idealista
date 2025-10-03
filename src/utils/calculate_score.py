@@ -10,7 +10,7 @@ from transformers import (
 import torch
 
 
-class RealEstateScored():
+class RealEstateScored:
     """
     Clase para calcular un score para cada propiedad normalizado por barrio.
 
@@ -27,19 +27,24 @@ class RealEstateScored():
     calculate_score (df, by_column='Barrio'): Calcula un score para cada propiedad normalizado por barrio.
     """
 
-    def __init__(self, df, model_dir):
+    def __init__(self, df=pd.DataFrame(), model_dir="models/best_model", trigger = True):
         # Configuración tokenización
         self.max_length = 255
-        
-        # Revisar GPU
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        torch.cuda.empty_cache() #Liberar cache de cuda
+        # Configuración uso del modelo
+        self.trigger = trigger
 
-        # 1. Cargar el modelo entrenado
-        self.load_best_model(model_dir)
+        if self.trigger:
+            # Revisar GPU
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            torch.cuda.empty_cache() #Liberar cache de cuda
 
-        # 2. Obtener las predicciones y actualizar el DataFrame
-        self.predict_condition_reformed(df)
+            # 1. Cargar el modelo entrenado
+            self.load_best_model(model_dir)
+
+            # 2. Obtener las predicciones y actualizar el DataFrame
+            self.df = self.predict_condition_reformed(df)
+        else:
+            self.df = df.copy()
 
         # 3. Calcular la puntuación y actualizar el DataFrame
         self.calculate_score()
@@ -60,7 +65,7 @@ class RealEstateScored():
         # Cargar el mejor modelo entrenado
         self.model = AutoModelForSequenceClassification.from_pretrained(model_dir).to(self.device)
         self.tokenizer = AutoTokenizer.from_pretrained(model_dir)
-        logger.info("Fine-tuning completado. Mejor modelo cargado.")
+        logger.info("Mejor modelo cargado.")
 
     # ----------------------- Predicción -----------------------
     def predict_condition_reformed(self, df, target_column="Descripción"):
@@ -111,7 +116,7 @@ class RealEstateScored():
 
         # Crear columna en el DataFrame original
         df["Reformado"] = predictions
-        self.df = df.copy()
+        return df
     
     def calculate_score(self, by_column = "Barrio"):
         """
@@ -135,6 +140,22 @@ class RealEstateScored():
         id_col = "Código de propiedad"
         numeric_cols = ["Precio por metro cuadrado", "Habitaciones", "Baños"]
         binary_cols = ["Nueva promoción", "Exterior", "Tiene ascensor", "Plaza de parking", "Reformado"]
+
+        # Pesos ponderados
+        weights = {
+            "Precio por metro cuadrado": 0.4, #ponderación por metro cuadrado
+            "Habitaciones": 0.2, #ponderación por habitaciones
+            "Baños": 0.1, #ponderación por baños
+            "Nueva promoción": 0.1, #bonus 10%
+            "Reformado": 0.1, #bonus 10%
+            "Tiene ascensor": 0.15, #ponderación por ascensor
+            "Exterior": 0.05, #ponderación por exterior
+            "Plaza de parking": 0.1, #ponderación por plaza de parking
+        }
+
+        if not self.trigger:
+            binary_cols.remove("Reformado")
+            weights.pop("Reformado")
         
         # Asegurar tipos correctos
         self.df[numeric_cols] = self.df[numeric_cols].apply(pd.to_numeric, errors='coerce').fillna(0).astype(float)
@@ -154,18 +175,6 @@ class RealEstateScored():
         
         # Evitar división por cero (si max == min)
         df_norm[numeric_cols + binary_cols] = df_norm[numeric_cols + binary_cols].fillna(0)
-        
-        # Calcular score ponderado
-        weights = {
-            "Precio por metro cuadrado": 0.4, #ponderación por metro cuadrado
-            "Habitaciones": 0.2, #ponderación por habitaciones
-            "Baños": 0.1, #ponderación por baños
-            "Nueva promoción": 0.1, #bonus 10%
-            "Reformado": 0.1, #bonus 10%
-            "Tiene ascensor": 0.15, #ponderación por ascensor
-            "Exterior": 0.05, #ponderación por exterior
-            "Plaza de parking": 0.1, #ponderación por plaza de parking
-        }
         
         # Calcular score
         df_norm["Score"] = sum(df_norm[col] * w * 10 for col, w in weights.items()).round(1)

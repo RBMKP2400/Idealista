@@ -19,31 +19,37 @@ from datasets import Dataset, DatasetDict, load_from_disk
 
 class TrainClassificationLLM:
     """
-    Recomendador de inmuebles usando LLM grande con fine-tuning,
-    pseudo-labeling profesional (lematización + embeddings) y early stopping.
+        Entrenamiento de un modelo de LLLM preentrenado `google/flan-t5-large`
+        adaptado mediante fine-tuning semi-supervisado, 
+        combinando pseudo-labeling (lematización + embeddings) 
+        y early stopping.
 
-    1. Pseudo-labeling profesional:
-        - Lematización en español para capturar lexemas.
-        # python -m spacy download es_core_news_sm
-        - Embeddings para similitud semántica (listo para entrar vs requiere reforma).
+        1. Pseudo-labeling:
+            - Lematización en español para capturar lexemas.
+            # python -m spacy download es_core_news_sm
+            - Embeddings semánticos para generar pseudo-etiquetas 
+            ("listo para entrar" vs "requiere reforma").
 
-    2. Fine-tuning robusto:
-        - Early stopping automático basado en eval_loss.
-        - Logging detallado de métricas en cada epoch.
-        - Manejo de chunks largos y batches grandes para GPU.
+        2. Fine-tuning semi-supervisado:
+            - Entrenamiento de Flan-T5 con pseudo-etiquetas en lugar de etiquetas humanas.
+            - Early stopping automático basado en eval_loss.
+            - Logging detallado de métricas en cada epoch.
+            - Manejo de secuencias largas y batches grandes optimizados para GPU.
 
-    3. Predicción confiable:
-        - Resultado binario (1 = listo para entrar, 0 = requiere reforma).
+        3. Predicción:
+            - Resultado binario:
+                1 = listo para entrar
+                0 = requiere reforma
 
-    Attributes:
-        - model_name (str): nombre del modelo LLM preentrenado.
-        - max_length (int): longitud máxima de la entrada del modelo.
-        - embedding_model (str): nombre del modelo de embeddings para pseudo-labeling.
-        - device (str): dispositivo en el que se encuentra el modelo (GPU o CPU).
-        - tokenizer (AutoTokenizer): tokenizador para la entrada del modelo.
-        - model (AutoModelForSequenceClassification): modelo LLM preentrenado.
-        - embedding_model (SentenceTransformer): modelo de embeddings para pseudo-labeling.
-        - df (pd.DataFrame): DataFrame con las propiedades y sus características.
+        Attributes:
+            - model_name (str): nombre del modelo LLM preentrenado (ej. "google/flan-t5-large").
+            - max_length (int): longitud máxima de la entrada del modelo.
+            - embedding_model (str): modelo de embeddings usado para pseudo-labeling.
+            - device (str): dispositivo en el que se encuentra el modelo (GPU o CPU).
+            - tokenizer (AutoTokenizer): tokenizador para la entrada del modelo.
+            - model (AutoModelForSequenceClassification): modelo Flan-T5 ajustado con pseudo-labeling.
+            - embedding_model (SentenceTransformer): modelo de embeddings para pseudo-labeling.
+            - df (pd.DataFrame): DataFrame con las propiedades y sus características.
     """
     def __init__(self,
                  model_name="google/flan-t5-large",
@@ -311,6 +317,8 @@ class TrainClassificationLLM:
                 if epochs_no_improve >= patience:
                     logger.info("Early stopping activado")
                     break
+
+        logger.info(f"Fine-tuning finalizado. Mejor modelo guardado en {best_model_dir}")
 
 # ----------------------- Uso -----------------------
 if __name__ == "__main__":

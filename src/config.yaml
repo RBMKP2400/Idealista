@@ -5,7 +5,7 @@
 # Ruta al archivo JSON donde se guardarán los resultados de Idealista
 PATH_RESULTS: output/idealista_registros.json
 
-# Ruta al archivo Excel con los resultados (opcional)
+# Ruta al archivo Excel con los resultados
 GMAIL_EXCEL: output/idealista_registros.xlsx
 
 
@@ -18,5 +18,12 @@ GMAIL_SUBJECT: "Idealista: Nuevas casas en venta"
 
 # Lista de destinatarios de los correos
 # Escribe los correos entre corchetes y separados por comas
-# Ejemplo: ["persona1@gmail.com", "persona2@hotmail.com"]
+# Ejemplo: ["persona1@gmail.com", "persona2@gmail.com"]
 GMAIL_DESTINATION: []
+
+#######################################
+# TRIGGERS
+#######################################
+
+# USAR MODELO
+USE_MODEL: True
