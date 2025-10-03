@@ -7,7 +7,7 @@ from pathlib import Path
 from utils.loguru_conf import logger
 
 
-def get_new_records(df: pd.DataFrame, df_new: pd.DataFrame) -> pd.DataFrame:
+def get_new_records(df: pd.DataFrame, df_new: pd.DataFrame, location: str) -> pd.DataFrame:
     """
     Devuelve los registros de df_new que no están presentes en df
     basándose en la combinación de 'Property Code' y 'Price'.
@@ -31,18 +31,21 @@ def get_new_records(df: pd.DataFrame, df_new: pd.DataFrame) -> pd.DataFrame:
 
     # Filtrar sólo los registros nuevos que no existen en df
     new_records = df_new[~df_new["_key"].isin(df["_key"])].copy()
+    expired_records = df[(~df["_key"].isin(df_new["_key"])) & (df["Municipio"] == location)].copy()
 
     # Convertir 'Precio' a numérico, rellenar NaNs con 0 y convertir a entero
     new_records["Precio"] = pd.to_numeric(new_records["Precio"], errors="coerce").fillna(0).astype(int)
+    expired_records["Precio"] = pd.to_numeric(expired_records["Precio"], errors="coerce").fillna(0).astype(int)
 
     # Eliminar la columna clave temporal en ambos DataFrames
     new_records.drop(columns="_key", inplace=True)
+    expired_records.drop(columns="_key", inplace=True)
     df.drop(columns="_key", inplace=True)
 
-    return new_records
+    return new_records, expired_records
 
 
-def save_df_to_json_append(df: pd.DataFrame, filename: str):
+def save_df_to_json_append(df: pd.DataFrame, filename: str, location: str):
     """
     Guarda un DataFrame en un archivo JSON, añadiendo registros si el archivo ya existe.
     Crea automáticamente el directorio si no existe.
@@ -79,11 +82,21 @@ def save_df_to_json_append(df: pd.DataFrame, filename: str):
     # Determinar los nuevos registros para añadir
     if data:
         # Obtener nuevos registros comparando los datos existentes con el nuevo DataFrame
-        new_records = get_new_records(pd.DataFrame(data), df).to_dict(orient='records')
+        new_records, expired_records = get_new_records(pd.DataFrame(data), df, location)
+        new_records = new_records.to_dict(orient='records')
+
+        if not expired_records.empty:
+            # Obtener los códigos de propiedad a eliminar
+            drop_records = set(expired_records["Código de propiedad"].unique())
+            # Filtrar data eliminando los registros viejos inexistentes
+            data = [rec for rec in data if rec["Código de propiedad"] not in drop_records]
+        else:
+            drop_records = []
     else:
         new_records = df.to_dict(orient='records')
+        drop_records = []
 
-    # Construir/actualizar un diccionario indexado por Código de propiedad ===
+    # Construir/actualizar un diccionario indexado por Código de propiedad
     store = {rec["Código de propiedad"]: rec for rec in data}
 
     if new_records:
@@ -118,6 +131,7 @@ def save_df_to_json_append(df: pd.DataFrame, filename: str):
 
     # Mostrar el número de nuevos registros añadidos
     logger.info(f"{len(new_records)} registros añadidos al archivo {filename}.")
+    logger.info(f"{len(drop_records)} registros expirados se eliminan del archivo {filename}.")
 
     return new_records
 

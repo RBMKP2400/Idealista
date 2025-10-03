@@ -3,6 +3,7 @@ from connection.gmail_conn import GmailSender
 from params.idealista_params import get_params
 from utils.idealista_utils import parse_response, filter_output, table_metics
 from utils.help import get_config, save_df_to_json_append
+from utils.calculate_score import RealEstateScored
 from utils.loguru_conf import logger
 import time
 import pandas as pd
@@ -19,10 +20,10 @@ idealista_conn = IdealistaConnection()
 
 # Extrae y almacena los datos
 all_new_records = []
-page = 1
 for shape_type in ['Mid Home']: #['Small Home', 'Mid Home', 'Big Home']
-    for location in ["La Latina", "Alcorcón", "Leganés", "Carabanchel"]:
+    for location in ["La Latina", "Alcorcón", "Leganés", "Carabanchel"]: #["La Latina", "Alcorcón", "Leganés", "Carabanchel"]
         df_records = pd.DataFrame()
+        page = 1
         while True:
             logger.info(f"Procesando {shape_type} en {location}: página {page}")
             # Obtiene los parámetros
@@ -42,13 +43,17 @@ for shape_type in ['Mid Home']: #['Small Home', 'Mid Home', 'Big Home']
         # Aplica filtros adicionales al DataFrame
         df_records = filter_output(df_records)
         # Guarda el DataFrame en un archivo JSON
-        new_records = save_df_to_json_append(df_records, config['PATH_RESULTS'])
+        new_records = save_df_to_json_append(df_records, config['PATH_RESULTS'], location)
         all_new_records.extend(new_records)
         time.sleep(1)
 
 # Crea la tabla resumen de los datos
 df_metrics = table_metics(config)
 df_new_records = pd.DataFrame(all_new_records)
+
+# Crear columnas Score y Reformado
+scorer = RealEstateScored(df_new_records, model_dir="models/best_model")
+df_new_records = scorer.df.copy()
 
 # GMAIL: Enviar correo
 if df_new_records.empty:
