@@ -1,5 +1,25 @@
 # CHANGELOG.md
 
+## 0.2.0 (2025-10-06)
+
+Features
+- **Property classification and scoring** -> [hash](https://github.com/RBMKP2400/Idealista/commit/9172798c4302b5afd8186031b1e4df2bf8d40481)  
+  - Added model-based renovation prediction and score normalization by neighborhood.  
+  - Integrated fine-tuning with pseudo-labeling for “Reformado” detection.  
+  - Updated `main.py` and database cleanup logic.
+
+- **USE_MODEL trigger** -> [hash](https://github.com/RBMKP2400/Idealista/commit/5ba59381538f0fd46be1a37a6e39971ad0e016e5)  
+  - Allows switching between trained model (`True`) or pseudo-label pipeline (`False`).
+
+- **'Reformado' labeling pipeline** -> [hash](https://github.com/RBMKP2400/Idealista/commit/fab30fd2ea2303f8cf0951323100569888150cb0)  
+  - Hybrid system using lemmatization and embeddings.  
+  - Docker limited to `USE_MODEL=False`.
+
+Chores
+- **Docker network mode set to host** -> [hash](https://github.com/RBMKP2400/Idealista/commit/645427e2fb7b4914896e499627f72953226276b3)
+
+---
+
 ## 0.1.0 (2025-09-11)
 
 Features:

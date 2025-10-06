@@ -1,14 +1,18 @@
 # Tu Asistente de Búsqueda de Viviendas
 
-Este proyecto permite consultar la API de Idealista para obtener listados de viviendas en venta y enviar un correo electrónico automático con los resultados filtrados.  
-Los datos se guardan en JSON y Excel para un fácil análisis posterior.  
-
-
-
+Este proyecto permite consultar la API de Idealista para obtener listados de viviendas en venta, etiquetarlas automáticamente como “reformadas” o “a reformar”, calcular un score de evaluación para priorizar oportunidades, y enviar un correo electrónico con los resultados filtrados.
+Los datos se guardan en JSON y Excel para su análisis posterior.
 
 ## Características principales
 
-- Autenticación automática con la API de Idealista (gestiona el Bearer Token y su expiración).  
+- Autenticación automática con la API de Idealista (gestiona el Bearer Token y su expiración).
+- Clasificación inteligente de viviendas mediante dos métodos:
+  - `USE_MODEL = False`: usa pseudo-labeling con lematización y embeddings para estimar si una vivienda está reformada.
+  - `USE_MODEL = True`: permite cargar o entrenar un modelo propio con fine-tuning para mejorar la precisión. \
+  ***(⚠️ Esta funcionalidad no está disponible en entornos dockerizados)***.
+- Cálculo de un score de evaluación ponderado que combina múltiples variables (precio, tamaño, estado, y características adicionales) para priorizar las mejores oportunidades.
+
+Los resultados se guardan en la columna "Score" del DataFrame final.
 - Configuración para diferentes tipos de vivienda en función de su tamaño (`params/idealista_params.py`):  
   - Big Home  
   - Mid Home  
