@@ -2,8 +2,8 @@ from connection.idealista_conn import IdealistaConnection
 from connection.gmail_conn import GmailSender
 from params.idealista_params import get_params
 from utils.idealista_utils import parse_response, filter_output, table_metics
-from utils.help import get_config, save_df_to_json_append
-from utils.calculate_score import RealEstateScored
+from utils.help import get_config, save_df_to_json_append, json_to_excel
+from utils.calculate_score import calculate_score
 from utils.loguru_conf import logger
 import time
 import pandas as pd
@@ -15,6 +15,14 @@ config = get_config(path_config)
 if not config:
     logger.error("No se pudo cargar la configuración del proyecto.")
     exit(1)
+
+if config["USE_MODEL"]:
+    from pipelines.pipeline_model import LabelingModel as labeling
+    logger.info(f"Se usará el modelo de clasificación entrenado para etiquetar los registros.")
+else:
+    from pipelines.pipeline_pseudo import PseudoLabeling as labeling
+    logger.info(f"Se usará pseudo-labeling para etiquetar los registros.")
+
 # Inicializa la conexión con Idealista
 idealista_conn = IdealistaConnection()
 
@@ -42,6 +50,9 @@ for shape_type in ['Mid Home']: #['Small Home', 'Mid Home', 'Big Home']
 
         # Aplica filtros adicionales al DataFrame
         df_records = filter_output(df_records)
+        # Crea columnas Score y Reformado (esta columna se crea si USE_MODEL es True)
+        labeler = labeling(df=df_records)
+        df_records = calculate_score(df =labeler.df.copy())
         # Guarda el DataFrame en un archivo JSON
         new_records = save_df_to_json_append(df_records, config['PATH_RESULTS'], location)
         all_new_records.extend(new_records)
@@ -51,23 +62,20 @@ for shape_type in ['Mid Home']: #['Small Home', 'Mid Home', 'Big Home']
 df_metrics = table_metics(config)
 df_new_records = pd.DataFrame(all_new_records)
 
-# Crear columnas Score y Reformado (esta columna se crea si USE_MODEL es True)
-scorer = RealEstateScored(df=df_new_records, trigger=config["USE_MODEL"])
-df_new_records = scorer.df.copy()
-
 # GMAIL: Enviar correo
 if df_new_records.empty:
     logger.info("No se encontraron registros nuevos. No se envía correo.")
 else:
     # Eliminar columnas innecesarias
-    df_new_records.drop(columns=["Notas", "Descripción","Número de fotos", "Tiene vídeo", "Tiene plano"], inplace=True)
+    df_new_records.drop(columns=["Notas", "Descripción", "Número de fotos", "Tiene vídeo", "Tiene plano"], inplace=True)
 
     # Establecer las configuraciones del correo
     sender = GmailSender(config)
 
     # Guardar el Excel
+    json_path = config['PATH_RESULTS']
     excel_path = config['GMAIL_EXCEL']
-    df_new_records.to_excel(excel_path, index=False)
+    json_to_excel(json_path, excel_path)
 
     # Enviar mensaje
     sender.send_message(df_new_records, df_metrics, excel_path)

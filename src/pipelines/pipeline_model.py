@@ -1,6 +1,7 @@
 import os
+import json
 import pandas as pd
-from utils.loguru_conf import logger
+from loguru import logger
 from tqdm import tqdm
 from transformers import (
     AutoTokenizer,
@@ -13,8 +14,6 @@ import spacy
 from sentence_transformers import SentenceTransformer, util
 import torch
 from datasets import Dataset, DatasetDict, load_from_disk
-
-
 
 
 class TrainClassificationLLM:
@@ -320,14 +319,103 @@ class TrainClassificationLLM:
 
         logger.info(f"Fine-tuning finalizado. Mejor modelo guardado en {best_model_dir}")
 
+class LabelingModel:
+    def __init__(self, df, model="models/best_model"):
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        torch.cuda.empty_cache() #Liberar cache de cuda
+        self.max_length = 255
+
+        # 1. Cargar el mejor modelo entrenado
+        self.load_best_model(model)
+
+        # 2. Obtener las predicciones y actualizar el DataFrame
+        self.df = self.predict_condition_reformed(df)
+
+    def load_best_model(self, model="models/best_model"):
+        """
+        Carga el modelo entrenado en la ruta especificada.
+
+        Args:
+        model (str): Ruta del directorio del modelo.
+
+        Raises:
+        ValueError: Si no se encuentra el directorio del mejor modelo.
+        """
+        if not os.path.exists(model):
+            raise ValueError(f"No se encontró el directorio del mejor modelo: {model}")
+        
+        # Cargar el mejor modelo entrenado
+        self.model = AutoModelForSequenceClassification.from_pretrained(model).to(self.device)
+        self.tokenizer = AutoTokenizer.from_pretrained(model)
+        logger.info("Mejor modelo cargado.")
+
+    def predict_condition_reformed(self, df, target_column="Descripción"):
+        """
+        Predice si una vivienda está reformada (1) o requiere reforma (0).
+
+        Si cualquier chunk de un registro obtiene 1, el registro completo es 1.
+        Añade la columna 'Reformado' al DataFrame original.
+
+        Args:
+        df (pd.DataFrame): DataFrame con las propiedades y sus características.
+        target_column (str): Columna con las descripciones de las viviendas.
+
+        Returns:
+        pd.DataFrame: DataFrame con la columna 'Reformado' agregada.
+        """
+        self.model.eval()
+        predictions = []
+
+        descriptions = df[target_column].tolist()
+
+        for desc in tqdm(descriptions, desc="Prediciendo vivienda reformada:"):
+            # Tokenizar con posibilidad de chunks
+            tokenized = self.tokenizer(
+                desc,
+                truncation=True,
+                max_length=self.max_length,
+                return_overflowing_tokens=True,
+                return_tensors="pt",
+                padding="max_length"
+            ).to(self.device)
+
+            chunk_preds = []
+            for i in range(tokenized["input_ids"].shape[0]):
+                inputs = {
+                    "input_ids": tokenized["input_ids"][i].unsqueeze(0),
+                    "attention_mask": tokenized["attention_mask"][i].unsqueeze(0)
+                }
+                with torch.no_grad():
+                    outputs = self.model(**inputs)
+                    logits = outputs.logits
+                    pred = torch.argmax(logits, dim=-1).item()
+                chunk_preds.append(pred)
+
+            # Si algún chunk es 1 → el registro completo es 1
+            final_pred = 1 if any(p == 1 for p in chunk_preds) else 0
+            predictions.append(final_pred)
+
+        # Crear columna en el DataFrame original
+        df["Reformado"] = predictions
+        return df
+
 # ----------------------- Uso -----------------------
 if __name__ == "__main__":
-    llm = TrainClassificationLLM()
+    # llm = TrainClassificationLLM()
 
-    llm.load_raw_data()
-    llm.generate_finetune_json(output_file="data/finetune_dataset.json")
+    # llm.load_raw_data()
+    # llm.generate_finetune_json(output_file="data/finetune_dataset.json")
 
-    # Si ya has extraido el json previamente
-    tokenized_dataset = load_from_disk("data/tokenized_dataset")
-    tokenized_dataset = tokenized_dataset.rename_column("estado_binario", "labels")
-    llm.fine_tune(tokenized_dataset, output_dir="models", epochs=5, batch_size=1, patience=2)
+    # # Si ya has extraido el json previamente
+    # tokenized_dataset = load_from_disk("data/tokenized_dataset")
+    # tokenized_dataset = tokenized_dataset.rename_column("estado_binario", "labels")
+    # llm.fine_tune(tokenized_dataset, output_dir="models", epochs=5, batch_size=1, patience=2)
+
+    # Si ya has entrenado previamente y quieres usar el mejor modelo:
+    with open("output/idealista_registros.json", 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    df = pd.DataFrame(data)
+
+    labeling = LabelingModel(df, model="models/best_model")
+
+    df = labeling.df

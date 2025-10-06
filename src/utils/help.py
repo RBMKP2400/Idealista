@@ -165,7 +165,7 @@ def get_config(path_config: str = 'config.yaml') -> dict:
         logger.error(f"Error al parsear YAML: {e}")
         return {}
     
-def json_a_excel(json_path: str, excel_path: str) -> None:
+def json_to_excel(json_path: str, excel_path: str) -> None:
     """
     Convierte un archivo JSON en un archivo Excel.
 

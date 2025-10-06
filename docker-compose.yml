@@ -12,6 +12,7 @@ services:
     environment:
       - CONFIG_PATH=config.yaml
     network_mode: bridge
+    restart: "no"
 
 volumes:
   output:

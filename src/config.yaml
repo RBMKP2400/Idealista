@@ -26,4 +26,4 @@ GMAIL_DESTINATION: []
 #######################################
 
 # USAR MODELO
-USE_MODEL: True
+USE_MODEL: False
