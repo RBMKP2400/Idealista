@@ -10,17 +10,15 @@ Los datos se guardan en JSON y Excel para su análisis posterior.
   - `USE_MODEL = False`: usa pseudo-labeling con lematización y embeddings para estimar si una vivienda está reformada.
   - `USE_MODEL = True`: permite cargar o entrenar un modelo propio con fine-tuning para mejorar la precisión. \
   ***(⚠️ Esta funcionalidad no está disponible en entornos dockerizados)***.
-- Cálculo de un score de evaluación ponderado que combina múltiples variables (precio, tamaño, estado, y características adicionales) para priorizar las mejores oportunidades.
-
-Los resultados se guardan en la columna "Score" del DataFrame final.
+- Cálculo de un score de evaluación ponderado que combina múltiples variables (precio, tamaño, estado, y características adicionales) para priorizar las mejores oportunidades. Los resultados se guardan en la columna "Score" del DataFrame final.
 - Configuración para diferentes tipos de vivienda en función de su tamaño (`params/idealista_params.py`):  
   - Big Home  
   - Mid Home  
   - Small Home  
   Además, se realiza un **segundo filtrado** de los resultados mediante la función `filter_output`, que permite refinar aún más los registros obtenidos según criterios personalizados.  
   Se recomienda que adaptes esta función a tus necesidades específicas para obtener solo los registros que realmente te interesen.  
-- Persistencia de resultados en `output/` en formato JSON y Excel.  
-- Historial en memoria de todos los registros extraídos de la API.  
+- Persistencia de resultados en `output/` en formato JSON y Excel.
+- Criba del historial de registros: elimina de los históricos aquellos resultados previamente almacenados que ya no se encuentran disponibles en la web, manteniendo únicamente los registros vigente    
 - Notificaciones por correo electrónico:  
   - Envía solo nuevos registros encontrados.  
   - Incluye un Excel con todos los registros históricos.  

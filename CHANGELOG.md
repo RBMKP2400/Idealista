@@ -1,6 +1,6 @@
 # CHANGELOG.md
 
-## 0.2.0 (2025-10-06)
+## 0.2.0 (2025-10-08)
 
 Features
 - **Property classification and scoring** -> [hash](https://github.com/RBMKP2400/Idealista/commit/9172798c4302b5afd8186031b1e4df2bf8d40481)  
